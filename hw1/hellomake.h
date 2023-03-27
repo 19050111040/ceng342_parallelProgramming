@@ -2,5 +2,4 @@
 example include file
 */
 
-void myPrintHelloMake(void);
-
+void matrixMultiplication(int rows, int cols, char *filename);
