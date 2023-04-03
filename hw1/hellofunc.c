@@ -1,67 +1,34 @@
-#include "hellomake.h"
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <time.h>
+#include <mpi.h>
 
-void matrixMultiplication(int rows, int cols, char *filename)
-{ 
-  printf("rows: %d, cols: %d, filename: %s\n", rows, cols, filename);
-  double *matrix = (double *)calloc(rows * cols, sizeof(double));
-  generate_random_matrix(rows, cols, matrix);
-
-  double *vector = (double *)malloc(cols * sizeof(double));
-  for (int i = 0; i < cols; i++)
-  {
-    vector[i] = ((double)rand() / (double)RAND_MAX) * 99.0 + 1.0;
-  }
-
-  double *result = (double *)malloc(rows * sizeof(double));
-  for (int i = 0; i < rows; i++)
-  {
-    double row_sum = 0;
-    for (int j = 0; j < cols; j++)
-    {
-      row_sum += matrix[i * cols + j] * vector[j];
-    }
-    result[i] = row_sum;
-  }
-
-  FILE *output_file = fopen(filename, "w");
-  fprintf(output_file, "THE MATRIX\n");
-  for (int i = 0; i < rows; i++)
-  {
-    double row_sum = 0;
-    for (int j = 0; j < cols; j++)
-    {
-      fprintf(output_file, "%.2lf\t", matrix[i * cols + j]);
-    }
-    fprintf(output_file, "\n");
-  }
-
-  fprintf(output_file, "\n\nTHE VECTOR:\n");
-  for (int i = 0; i < cols; i++)
-  {
-    fprintf(output_file, "%.2lf\n", vector[i]);
-  }
-
-  fprintf(output_file, "\n\nTHE MULTIPLICATION VECTOR:\n");
-  for (int i = 0; i < rows; i++)
-  {
-    fprintf(output_file, "%.2lf\n", result[i]);
-  }
-  fclose(output_file);
-
-  free(result);
-  free(matrix);
-  free(vector);
-}
-
-void generate_random_matrix(int rows, int cols, double *matrix)
+void matrixMultiplication(int rank, int size, int N, int **A, int *B, int *C)
 {
-  srand(905011104);
-  for (int i = 0; i < rows * cols; i++)
+  int i, j;
+  int chunk_size = N / size;
+  int start = rank * chunk_size;
+  int end = (rank + 1) * chunk_size;
+
+  // Compute the local part of the result vector
+  for (i = start; i < end; i++)
   {
-    matrix[i] = ((double)rand() / (double)RAND_MAX) * 99.0 + 1.0;
+    C[i] = 0;
+    for (j = 0; j < M; j++)
+    {
+      C[i] += A[i][j] * B[j];
+    }
+  }
+
+  // Reduce the local results to the global result
+  if (rank == 0)
+  {
+    for (i = 1; i < size; i++)
+    {
+      MPI_Recv(&C[i * chunk_size], chunk_size, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+  }
+  else
+  {
+    MPI_Send(&C[start], chunk_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
   }
 }
